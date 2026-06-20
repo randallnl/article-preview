@@ -71,6 +71,31 @@ export function extractPreview(html, pageUrl) {
   };
 }
 
+async function readTextLimited(response, maxBytes) {
+  const declaredSize = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declaredSize) && declaredSize > maxBytes) {
+    throw new Error(`HTML response exceeds the ${maxBytes}-byte limit`);
+  }
+  if (!response.body) return '';
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let size = 0;
+  let text = '';
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) throw new Error(`HTML response exceeds the ${maxBytes}-byte limit`);
+      text += decoder.decode(value, { stream: true });
+    }
+    return text + decoder.decode();
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 export async function scrapeUrl(url, { timeoutMs = 15000, fetchImpl = fetch } = {}) {
   const fetchedAt = new Date().toISOString();
   try {
@@ -88,7 +113,7 @@ export async function scrapeUrl(url, { timeoutMs = 15000, fetchImpl = fetch } = 
     }
     const contentType = response.headers.get('content-type') ?? '';
     if (!contentType.includes('text/html')) throw new Error(`Expected HTML but received ${contentType || 'an unknown content type'}`);
-    const preview = extractPreview(await response.text(), response.url);
+    const preview = extractPreview(await readTextLimited(response, 2_000_000), response.url);
     return { ...preview, inputUrl: url, status: response.status, ok: response.ok, fetchedAt, error: null };
   } catch (error) {
     return { inputUrl: url, url: null, canonicalUrl: null, title: null, description: null, imageUrl: null, author: null, publishedAt: null, siteName: null, type: null, status: null, ok: false, fetchedAt, error: error.name === 'AbortError' ? `Timed out after ${timeoutMs}ms` : error.message };

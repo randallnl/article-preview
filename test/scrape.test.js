@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { extractPreview, toCsv } from '../src/scrape.js';
+import { createWorker } from '../src/worker.js';
 
 const html = `<!doctype html><html><head>
   <title>Fallback title</title>
@@ -26,4 +27,21 @@ test('extractPreview prefers Open Graph fields and resolves relative URLs', () =
 
 test('toCsv escapes quoted content', () => {
   assert.match(toCsv([{ inputUrl: 'https://example.com', title: 'A "quote"' }]), /"A ""quote"""/);
+});
+
+test('worker validates input and returns scraper output', async () => {
+  const worker = createWorker({ scrape: async (url) => ({ url, title: 'Preview', ok: true, error: null }) });
+  const env = { ALLOWED_ORIGIN: 'https://my-site.example' };
+  const response = await worker.fetch(new Request('https://worker.example/preview', {
+    method: 'POST', headers: { origin: 'https://my-site.example', 'content-type': 'application/json' },
+    body: JSON.stringify({ url: 'https://news.example/article' })
+  }), env);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('access-control-allow-origin'), 'https://my-site.example');
+  assert.equal((await response.json()).title, 'Preview');
+
+  const invalid = await worker.fetch(new Request('https://worker.example/preview', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url: 'http://127.0.0.1' })
+  }), env);
+  assert.equal(invalid.status, 400);
 });
