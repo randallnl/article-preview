@@ -1,0 +1,14 @@
+{
+  "name": "article-preview-scraper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fetch article URLs and export their preview metadata.",
+  "type": "module",
+  "scripts": {
+    "start": "node src/cli.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
