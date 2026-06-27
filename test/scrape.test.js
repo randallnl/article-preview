@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { extractPreview, toCsv } from '../src/scrape.js';
+import { cleanText, extractPreview, toCsv } from '../src/scrape.js';
 import { createWorker } from '../src/worker.js';
 
 const html = `<!doctype html><html><head>
@@ -27,6 +27,10 @@ test('extractPreview prefers Open Graph fields and resolves relative URLs', () =
 
 test('toCsv escapes quoted content', () => {
   assert.match(toCsv([{ inputUrl: 'https://example.com', title: 'A "quote"' }]), /"A ""quote"""/);
+});
+
+test('cleanText repairs common mojibake artifacts', () => {
+  assert.equal(cleanText('Whoâ€™s running â€œnowâ€� â€“ and why?'), 'Who\'s running "now" – and why?');
 });
 
 test('worker validates input and returns scraper output', async () => {

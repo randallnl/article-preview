@@ -14,8 +14,28 @@ export function decodeHtml(value = '') {
     .replace(/&#(x[\da-f]+|\d+);/gi, (_, code) => String.fromCodePoint(code[0].toLowerCase() === 'x' ? parseInt(code.slice(1), 16) : parseInt(code, 10)));
 }
 
+export function repairMojibake(value = '') {
+  return value
+    .replace(/â€™/g, "'")
+    .replace(/â€˜/g, "'")
+    .replace(/â€œ/g, '"')
+    .replace(/â€�/g, '"')
+    .replace(/â€³/g, '"')
+    .replace(/â€“/g, '–')
+    .replace(/â€”/g, '—')
+    .replace(/â€¦/g, '…')
+    .replace(/â€¢/g, '•')
+    .replace(/Â©/g, '©')
+    .replace(/Â®/g, '®')
+    .replace(/Â°/g, '°')
+    .replace(/Â±/g, '±')
+    .replace(/Â·/g, '·')
+    .replace(/Â /g, ' ')
+    .replace(/Â(?=[\s"'.,;:!?()[\]{}-])/g, '');
+}
+
 export function cleanText(value) {
-  return decodeHtml(value ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return repairMojibake(decodeHtml(value ?? '')).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function attributes(tag) {
